@@ -164,4 +164,4 @@ def train_bpe(
             for key, val in table.items():
                 freq_table[key] = freq_table.get(key, 0) + val
             
-        return merges(freq_table, vocab_size, list(["<|endoftext|>"]))
+        return merges(freq_table, vocab_size, special_tokens)
