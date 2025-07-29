@@ -7,20 +7,29 @@ from multiprocessing import Process, Queue
 PATTERN = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
 
 
-def pre_tokenization(chunk: str, special_tokens: list[str], queue: Queue):
-    re_pattern = "|".join([re.escape(token) for token in special_tokens])
-    documents = re.split(re_pattern, chunk)
-    freq_table = {}
-    for doc in documents:
-        if len(doc) == 0:
-            continue
-        matches = re.finditer(PATTERN, doc)
-        for match in matches:
-            pre_token = match.group()
-            if len(pre_token) == 0:
+def pre_tokenization(input_path: str | os.PathLike,
+                     start: int,
+                     end: int,
+                     special_tokens: list[str], queue: Queue):
+    with open(input_path, mode="rb") as f:
+        f.seek(start)
+        chunk = f.read(end - start)
+
+        # Unfortunate step for Windows only!
+        unix_style_chunk = chunk.replace(b"\r\n", b"\n")
+        re_pattern = "|".join([re.escape(token) for token in special_tokens])
+        documents = re.split(re_pattern, unix_style_chunk.decode("utf-8"))
+        freq_table = {}
+        for doc in documents:
+            if len(doc) == 0:
                 continue
-            freq_table[pre_token] = freq_table.get(pre_token, 0) + 1
-    queue.put(freq_table)
+            matches = re.finditer(PATTERN, doc)
+            for match in matches:
+                pre_token = match.group()
+                if len(pre_token) == 0:
+                    continue
+                freq_table[pre_token] = freq_table.get(pre_token, 0) + 1
+        queue.put(freq_table)
 
 
 def pre_compute(freq_table: dict[str, int]):
@@ -147,28 +156,25 @@ def train_bpe(
         processes = []
         queue = Queue()
         boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
-        freq_table = {}
-        num_processes = len(
-            boundaries[:-1]
-        )  # find_chunk_boundaries may return less than requested chunks
-        for start, end in zip(boundaries[:-1], boundaries[1:]):
-            f.seek(start)
-            chunk = f.read(end - start)
+    
+    freq_table = {}
+    
+    # override the process number if find_chunk_boundaries may return less than 
+    # requested chunks
+    num_processes = len(boundaries[:-1])  
+    
+    for start, end in zip(boundaries[:-1], boundaries[1:]):
+        proc = Process(
+            target=pre_tokenization,
+            args=(input_path, start, end, special_tokens, queue),
+        )
+        processes.append(proc)
+        proc.start()
 
-            # Unfortunate step for Windows only!
-            unix_style_chunk = chunk.replace(b"\r\n", b"\n")
+    for _ in range(num_processes):
+        table = queue.get()
+        # merge the table
+        for key, val in table.items():
+            freq_table[key] = freq_table.get(key, 0) + val
 
-            proc = Process(
-                target=pre_tokenization,
-                args=(unix_style_chunk.decode("utf-8"), special_tokens, queue),
-            )
-            processes.append(proc)
-            proc.start()
-
-        for _ in range(num_processes):
-            table = queue.get()
-            # merge the table
-            for key, val in table.items():
-                freq_table[key] = freq_table.get(key, 0) + val
-
-        return merges(freq_table, vocab_size, special_tokens)
+    return merges(freq_table, vocab_size, special_tokens)
