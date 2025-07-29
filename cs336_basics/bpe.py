@@ -138,15 +138,19 @@ def merges(freq_table: dict[str, int], vocab_size, special_tokens: list[str]):
 
 
 def train_bpe(
-    input_path: str | os.PathLike, vocab_size: int, special_tokens: list[str]
+    input_path: str | os.PathLike,
+    vocab_size: int,
+    special_tokens: list[str],
+    num_processes,
 ):
     with open(input_path, mode="rb") as f:
-        num_processes = 3
         processes = []
         queue = Queue()
         boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
         freq_table = {}
-        num_processes = len(boundaries[:-1]) # find_chunk_boundaries may return less than requested chunks
+        num_processes = len(
+            boundaries[:-1]
+        )  # find_chunk_boundaries may return less than requested chunks
         for start, end in zip(boundaries[:-1], boundaries[1:]):
             f.seek(start)
             chunk = f.read(end - start)
@@ -154,7 +158,10 @@ def train_bpe(
             # Unfortunate step for Windows only!
             unix_style_chunk = chunk.replace(b"\r\n", b"\n")
 
-            proc = Process(target=pre_tokenization, args=(unix_style_chunk.decode("utf-8"), special_tokens, queue))
+            proc = Process(
+                target=pre_tokenization,
+                args=(unix_style_chunk.decode("utf-8"), special_tokens, queue),
+            )
             processes.append(proc)
             proc.start()
 
@@ -163,5 +170,5 @@ def train_bpe(
             # merge the table
             for key, val in table.items():
                 freq_table[key] = freq_table.get(key, 0) + val
-            
+
         return merges(freq_table, vocab_size, special_tokens)

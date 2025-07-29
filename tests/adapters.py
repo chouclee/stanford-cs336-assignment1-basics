@@ -592,4 +592,6 @@ def run_train_bpe(
                 Merges are ordered by order of creation.
     """
     
-    return train_bpe(input_path, vocab_size, special_tokens)
+    num_processes = kwargs.get('num_processes', 1)
+    
+    return train_bpe(input_path, vocab_size, special_tokens, num_processes)

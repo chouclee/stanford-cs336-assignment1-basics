@@ -2,7 +2,7 @@ import json
 import time
 
 from .adapters import run_train_bpe
-from .common import FIXTURES_PATH, gpt2_bytes_to_unicode
+from .common import DATA_PATH, FIXTURES_PATH, gpt2_bytes_to_unicode
 
 
 def test_train_bpe_speed():
@@ -72,6 +72,7 @@ def test_train_bpe_special_tokens(snapshot):
         input_path=input_path,
         vocab_size=1000,
         special_tokens=["<|endoftext|>"],
+        num_processes=2
     )
 
     # Check that the special token is not in the vocab
@@ -86,3 +87,21 @@ def test_train_bpe_special_tokens(snapshot):
             "merges": merges,
         },
     )
+
+
+def test_train_bpe_tiny_stories():
+    input_path = DATA_PATH / "TinyStoriesV2-GPT4-train.txt"
+    vocab, merges = run_train_bpe(
+        input_path=input_path,
+        vocab_size=10000,
+        special_tokens=["<|endoftext|>"],
+        num_processes=16
+    )
+    with open("tinyStoriesVocab.json", "w") as f:
+        for k, v in vocab.items():
+          f.write(f"{k}: {str(v)}\n")  
+            
+    with open("tinyStoriesMerges.txt", 'w') as f:
+        for item in merges:
+            f.write(str(item[0]) + " " + str(item[1]) + "\n")
+        
