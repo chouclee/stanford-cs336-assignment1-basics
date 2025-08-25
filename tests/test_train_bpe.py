@@ -105,3 +105,20 @@ def test_train_bpe_tiny_stories():
         for item in merges:
             f.write(str(item[0]) + " " + str(item[1]) + "\n")
         
+
+# def test_train_bpe_open_web_text():
+#     input_path = DATA_PATH / "owt_valid.txt" 
+#     vocab, merges = run_train_bpe(
+#         input_path=input_path,
+#         vocab_size=10000,
+#         special_tokens=["<|endoftext|>"],
+#         num_processes=16
+#     )
+#     with open("owt_train_Vocab.json", "w") as f:
+#         for k, v in vocab.items():
+#           f.write(f"{k}: {str(v)}\n")  
+            
+#     with open("owt_train_Merges.txt", 'w') as f:
+#         for item in merges:
+#             f.write(str(item[0]) + " " + str(item[1]) + "\n")
+        
