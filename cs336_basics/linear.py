@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 import einops
 
-from .common import get_device
-
 
 class Linear(nn.Module):
     def __init__(
@@ -14,8 +12,8 @@ class Linear(nn.Module):
         dtype: torch.dtype | None = None,
     ):
         super().__init__()
-        self.device = device if device is not None else get_device()
-        self.dtype = dtype if dtype is not None else torch.float32
+        self.device = device
+        self.dtype = dtype
         self.in_features = in_features
         self.out_features = out_features
         self.weights = torch.nn.Parameter(

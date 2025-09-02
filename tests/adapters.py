@@ -9,7 +9,8 @@ import torch
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
-from cs336_basics import train_bpe, Tokenizer, Linear
+from cs336_basics import train_bpe, Tokenizer, Linear, Embedding
+
 
 def run_linear(
     d_in: int,
@@ -30,7 +31,12 @@ def run_linear(
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
 
-    ll = Linear(in_features=d_in, out_features=d_out, device=in_features.device, dtype=in_features.dtype)
+    ll = Linear(
+        in_features=d_in,
+        out_features=d_out,
+        device=in_features.device,
+        dtype=in_features.dtype,
+    )
     ll.weights.data.copy_(weights)
     return ll.forward(in_features)
 
@@ -54,7 +60,14 @@ def run_embedding(
         Float[Tensor, "... d_model"]: Batch of embeddings returned by your Embedding layer.
     """
 
-    raise NotImplementedError
+    embedding = Embedding(
+        num_embeddings=vocab_size,
+        embedding_dim=d_model,
+        device=weights.device,
+        dtype=weights.dtype,
+    )
+    embedding.weights.data.copy_(weights)
+    return embedding.forward(token_ids)
 
 
 def run_swiglu(
@@ -455,7 +468,9 @@ def run_cross_entropy(
     raise NotImplementedError
 
 
-def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: float) -> None:
+def run_gradient_clipping(
+    parameters: Iterable[torch.nn.Parameter], max_l2_norm: float
+) -> None:
     """Given a set of parameters, clip their combined gradients to have l2 norm at most max_l2_norm.
 
     Args:
@@ -592,7 +607,7 @@ def run_train_bpe(
                 representing that <token1> was merged with <token2>.
                 Merges are ordered by order of creation.
     """
-    
-    num_processes = kwargs.get('num_processes', 1)
-    
+
+    num_processes = kwargs.get("num_processes", 1)
+
     return train_bpe(input_path, vocab_size, special_tokens, num_processes)
